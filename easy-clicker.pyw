@@ -12,7 +12,7 @@ class ClickAction:
     def __init__(self, action_type, position, button="left", duration=300, delay=300, number=1):
         self.action_type = action_type  # "click"
         self.position = position  # (x, y)
-        self.button = button
+        self.button = button  # "left", "right", "double"
         self.duration = duration
         self.delay = delay
         self.number = number
@@ -120,10 +120,10 @@ class EasyClicker:
     def add_click(self):
         button_dialog = ctk.CTkToplevel(self.app)
         button_dialog.title("Chọn loại click")
-        button_dialog.geometry("300x150")
+        button_dialog.geometry("300x250")
         button_dialog.attributes("-topmost", True)
         
-        ctk.CTkLabel(button_dialog, text="Chọn nút chuột:").pack(pady=20)
+        ctk.CTkLabel(button_dialog, text="Chọn loại click:").pack(pady=20)
         
         def choose_left():
             button_dialog.destroy()
@@ -133,12 +133,17 @@ class EasyClicker:
             button_dialog.destroy()
             self.create_clicker("right")
             
+        def choose_double():
+            button_dialog.destroy()
+            self.create_clicker("double")
+            
         ctk.CTkButton(button_dialog, text="Chuột Trái", command=choose_left).pack(pady=5)
         ctk.CTkButton(button_dialog, text="Chuột Phải", command=choose_right).pack(pady=5)
+        ctk.CTkButton(button_dialog, text="Double Click", command=choose_double).pack(pady=5)
         
-    def create_clicker(self, button):
+    def create_clicker(self, button_type):
         number = len(self.actions) + 1
-        action = ClickAction("click", (100, 100), button, number=number)
+        action = ClickAction("click", (100, 100), button_type, number=number)
         self.actions.append(action)
         
         screen_width = self.app.winfo_screenwidth()
@@ -153,7 +158,7 @@ class EasyClicker:
             "python", clicker_path,
             f"--port={self.server_port}",
             f"--location={location[0]},{location[1]}",
-            f"--type={button}",
+            f"--type={button_type}",
             f"--number={number}"
         ]
         
@@ -174,8 +179,13 @@ class EasyClicker:
         frame.pack(fill="x", padx=5, pady=5)
         
         pos_str = f"{action.position[0]}x{action.position[1]}" if action.position else "Chưa đặt"
-        button_str = "trái" if action.button == "left" else "phải"
-        text = f"{action.number}: Click chuột {button_str} tại vị trí {pos_str} trong {action.duration}ms"
+        
+        if action.button == "left":
+            text = f"{action.number}: Click chuột trái tại vị trí {pos_str} trong {action.duration}ms"
+        elif action.button == "right":
+            text = f"{action.number}: Click chuột phải tại vị trí {pos_str} trong {action.duration}ms"
+        else:  # double
+            text = f"{action.number}: Double click tại vị trí {pos_str}"
             
         label = ctk.CTkLabel(frame, text=text, anchor="w")
         label.pack(side="left", fill="x", expand=True, padx=5)
@@ -205,6 +215,15 @@ class EasyClicker:
         delay_entry.insert(0, str(action.delay))
         delay_entry.pack(pady=5)
         
+        # Hiển thị loại click
+        if action.button == "left":
+            click_type = "Click chuột trái"
+        elif action.button == "right":
+            click_type = "Click chuột phải"
+        else:
+            click_type = "Double click"
+            
+        ctk.CTkLabel(edit_window, text=f"Loại: {click_type}").pack(pady=5)
         ctk.CTkLabel(edit_window, text=f"Tọa độ: {action.position} (chỉ xem)").pack(pady=5)
             
         def save_changes():
@@ -348,9 +367,14 @@ class EasyClicker:
             if self.stop_flag:
                 break
                 
-            pyautogui.click(action.position[0], action.position[1], 
-                           button=action.button, 
-                           duration=action.duration/1000.0)
+            if action.button == "double":
+                # Double click
+                pyautogui.doubleClick(action.position[0], action.position[1])
+            else:
+                # Click thường (trái/phải)
+                pyautogui.click(action.position[0], action.position[1], 
+                               button=action.button, 
+                               duration=action.duration/1000.0)
                                 
             time.sleep(action.delay/1000.0)
             
