@@ -5,12 +5,13 @@ import time
 import threading
 
 class ClickerWindow:
-    def __init__(self, port, location, click_type):
+    def __init__(self, port, location, click_type, position=None):
         self.port = port
         self.location = location
         self.click_type = click_type
         self.last_position = None
         self.position_stable_time = 0
+        self.initial_position = position  # Vị trí ban đầu nếu có
         
         self.root = tk.Tk()
         self.root.overrideredirect(True)
@@ -23,7 +24,14 @@ class ClickerWindow:
         
         # Kích thước cửa sổ
         size = 40
-        self.root.geometry(f"{size}x{size}+100+100")
+        
+        # Đặt vị trí ban đầu
+        if position and position != "0x0":
+            x, y = map(int, position.split("x"))
+            # Trừ đi size/2 để căn giữa
+            self.root.geometry(f"{size}x{size}+{x-20}+{y-20}")
+        else:
+            self.root.geometry(f"{size}x{size}+100+100")
         
         # Tạo canvas để vẽ vòng tròn
         self.canvas = tk.Canvas(self.root, width=size, height=size, 
@@ -115,6 +123,7 @@ if __name__ == "__main__":
     port = int(args.get("port", 0))
     location = args.get("location", "0")
     click_type = args.get("type", "left")
+    position = args.get("position", None)  # Lấy vị trí nếu có
     
-    app = ClickerWindow(port, location, click_type)
+    app = ClickerWindow(port, location, click_type, position)
     app.run()
