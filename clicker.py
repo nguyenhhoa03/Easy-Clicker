@@ -1,73 +1,63 @@
 import tkinter as tk
 import socket
-import json
-import argparse
+import sys
 import time
 import threading
 
 class ClickerWindow:
-    def __init__(self, port, location, click_type, number):
+    def __init__(self, port, location, click_type):
         self.port = port
         self.location = location
         self.click_type = click_type
-        self.number = number
         self.last_position = None
-        self.position_stable_time = None
+        self.position_stable_time = 0
         
         self.root = tk.Tk()
-        self.root.attributes("-topmost", True)
         self.root.overrideredirect(True)
+        self.root.attributes("-topmost", True)
+        
+        # Màu nền trong suốt
+        bg_color = "#FF00FF"
+        self.root.configure(bg=bg_color)
+        self.root.wm_attributes("-transparentcolor", bg_color)
         
         # Kích thước cửa sổ
-        self.window_size = 45
+        size = 40
+        self.root.geometry(f"{size}x{size}+100+100")
         
-        # Đặt vị trí cửa sổ
-        x = location[0] - self.window_size // 2
-        y = location[1] - self.window_size // 2
-        self.root.geometry(f"{self.window_size}x{self.window_size}+{x}+{y}")
-        
-        # Tạo canvas trong suốt
-        self.canvas = tk.Canvas(self.root, width=self.window_size, height=self.window_size, 
-                                bg='black', highlightthickness=0)
+        # Tạo canvas để vẽ vòng tròn
+        self.canvas = tk.Canvas(self.root, width=size, height=size, 
+                               bg=bg_color, highlightthickness=0)
         self.canvas.pack()
         
-        # Làm cửa sổ trong suốt
-        self.root.wm_attributes("-transparentcolor", "black")
+        # Màu sắc theo loại click
+        color_map = {
+            "left": "#4CAF50",
+            "right": "#2196F3",
+            "double": "#FF9800"
+        }
+        color = color_map.get(click_type, "#4CAF50")
         
-        # Vẽ vòng tròn và text
-        self.draw_circle()
+        # Vẽ vòng tròn
+        self.canvas.create_oval(2, 2, size-2, size-2, fill=color, outline="white", width=2)
+        
+        # Hiển thị số thứ tự
+        self.text_id = self.canvas.create_text(size//2, size//2, 
+                                               text=str(int(location)+1), 
+                                               fill="white", 
+                                               font=("Arial", 14, "bold"))
         
         # Bind sự kiện kéo thả
-        self.canvas.bind("<Button-1>", self.on_press)
+        self.canvas.bind("<Button-1>", self.start_drag)
         self.canvas.bind("<B1-Motion>", self.on_drag)
-        self.canvas.bind("<ButtonRelease-1>", self.on_release)
+        self.canvas.bind("<ButtonRelease-1>", self.stop_drag)
         
         self.drag_data = {"x": 0, "y": 0}
         
-        # Thread kiểm tra vị trí
-        self.check_thread = threading.Thread(target=self.check_position, daemon=True)
-        self.check_thread.start()
+        # Bắt đầu kiểm tra vị trí
+        self.check_position()
         
-    def draw_circle(self):
-        # Xóa canvas
-        self.canvas.delete("all")
-        
-        # Vẽ vòng tròn ngoài (màu xanh)
-        self.canvas.create_oval(2, 2, self.window_size-2, self.window_size-2, 
-                                fill="#1f538d", outline="#3b8ed0", width=2)
-        
-        # Hiển thị số và chữ
-        display_text = str(self.number)
-        if self.click_type == "s":
-            display_text += "S"
-        elif self.click_type == "e":
-            display_text += "E"
-            
-        self.canvas.create_text(self.window_size//2, self.window_size//2, 
-                                text=display_text, fill="white", 
-                                font=("Arial", 12, "bold"))
-        
-    def on_press(self, event):
+    def start_drag(self, event):
         self.drag_data["x"] = event.x
         self.drag_data["y"] = event.y
         
@@ -76,48 +66,34 @@ class ClickerWindow:
         y = self.root.winfo_y() + event.y - self.drag_data["y"]
         self.root.geometry(f"+{x}+{y}")
         
-    def on_release(self, event):
+    def stop_drag(self, event):
         pass
         
     def check_position(self):
-        while True:
-            time.sleep(0.1)
+        # Lấy vị trí trung tâm của cửa sổ
+        x = self.root.winfo_x() + 20  # 20 = size/2
+        y = self.root.winfo_y() + 20
+        current_pos = (x, y)
+        
+        # Kiểm tra nếu vị trí không đổi trong 300ms
+        if self.last_position == current_pos:
+            if time.time() - self.position_stable_time >= 0.3:
+                # Gửi vị trí về server
+                self.send_position(x, y)
+                self.position_stable_time = time.time() + 100  # Đặt thời gian lớn để không gửi lại
+        else:
+            self.last_position = current_pos
+            self.position_stable_time = time.time()
             
-            current_x = self.root.winfo_x() + self.window_size // 2
-            current_y = self.root.winfo_y() + self.window_size // 2
-            current_position = (current_x, current_y)
-            
-            if self.last_position is None:
-                self.last_position = current_position
-                self.position_stable_time = time.time()
-                continue
-                
-            # Kiểm tra vị trí có thay đổi không
-            if current_position != self.last_position:
-                self.last_position = current_position
-                self.position_stable_time = time.time()
-            else:
-                # Vị trí ổn định
-                if time.time() - self.position_stable_time >= 0.3:
-                    # Gửi vị trí về server
-                    self.send_position(current_position)
-                    self.position_stable_time = time.time() + 10  # Tránh gửi liên tục
-                    
-    def send_position(self, position):
+        # Tiếp tục kiểm tra
+        self.root.after(50, self.check_position)
+        
+    def send_position(self, x, y):
         try:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(("127.0.0.1", self.port))
-            
-            message = {
-                "type": "position_update",
-                "number": self.number,
-                "position": position
-            }
-            
-            if self.click_type in ["s", "e"]:
-                message["drag_type"] = self.click_type
-                
-            client.send(json.dumps(message).encode())
+            client.connect(('127.0.0.1', self.port))
+            message = f"POS:{self.location}:{x}x{y}"
+            client.send(message.encode())
             client.close()
         except Exception as e:
             print(f"Error sending position: {e}")
@@ -125,17 +101,20 @@ class ClickerWindow:
     def run(self):
         self.root.mainloop()
 
+def parse_args():
+    args = {}
+    for arg in sys.argv[1:]:
+        if arg.startswith("--"):
+            key, value = arg[2:].split("=", 1)
+            args[key] = value
+    return args
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, required=True)
-    parser.add_argument("--location", type=str, required=True)
-    parser.add_argument("--type", type=str, required=True)
-    parser.add_argument("--number", type=int, required=True)
+    args = parse_args()
     
-    args = parser.parse_args()
+    port = int(args.get("port", 0))
+    location = args.get("location", "0")
+    click_type = args.get("type", "left")
     
-    # Parse location
-    location = tuple(map(int, args.location.split(",")))
-    
-    app = ClickerWindow(args.port, location, args.type, args.number)
+    app = ClickerWindow(port, location, click_type)
     app.run()
