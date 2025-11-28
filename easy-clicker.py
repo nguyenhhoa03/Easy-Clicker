@@ -421,9 +421,12 @@ class EasyClicker:
                                button=action.button, 
                                duration=action.duration/1000.0)
             else:
+                # Kéo thả chuột: di chuyển đến điểm bắt đầu, nhấn giữ, kéo đến điểm kết thúc, thả
                 pyautogui.moveTo(action.position[0][0], action.position[0][1])
-                pyautogui.dragTo(action.position[1][0], action.position[1][1], 
+                pyautogui.mouseDown(button='left')
+                pyautogui.moveTo(action.position[1][0], action.position[1][1], 
                                 duration=action.duration/1000.0)
+                pyautogui.mouseUp(button='left')
                                 
             time.sleep(action.delay/1000.0)
             
