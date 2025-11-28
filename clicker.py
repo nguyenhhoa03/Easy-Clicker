@@ -19,7 +19,7 @@ class ClickerWindow:
         self.root.overrideredirect(True)
         
         # Kích thước cửa sổ
-        self.window_size = 50
+        self.window_size = 45
         
         # Đặt vị trí cửa sổ
         x = location[0] - self.window_size // 2
