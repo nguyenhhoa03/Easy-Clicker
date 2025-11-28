@@ -13,7 +13,7 @@ class EasyClicker:
     def __init__(self):
         self.window = ctk.CTk()
         self.window.title("Easy Clicker")
-        self.window.geometry("700x600")
+        self.window.geometry("750x600")
         
         self.actions = []
         self.clicker_processes = []
@@ -301,6 +301,8 @@ class EasyClicker:
         
     def run_clicking(self):
         mode = self.repeat_mode.get()
+
+        time.sleep(0.5)
         
         if mode == "infinite":
             while not self.stop_flag:
@@ -338,7 +340,9 @@ class EasyClicker:
             elif action["type"] == "right":
                 pyautogui.rightClick(x, y, duration=duration)
             elif action["type"] == "double":
-                pyautogui.click(x, y, clicks=2, interval=duration)
+                pyautogui.rightClick(x, y, duration=duration)
+                time.sleep(0.2)
+                pyautogui.rightClick(x, y, duration=duration)
                 
             time.sleep(action["delay"] / 1000.0)
             
