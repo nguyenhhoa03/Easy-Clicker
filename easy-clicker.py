@@ -171,9 +171,13 @@ class EasyClicker:
             drag_type = "s"
         elif action_type == "drag_end":
             drag_type = "e"
+        
+        # Lấy đường dẫn tuyệt đối của clicker.py
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        clicker_path = os.path.join(current_dir, "clicker.py")
             
         cmd = [
-            "python", "clicker.py",
+            "python", clicker_path,
             f"--port={self.server_port}",
             f"--location={location[0]},{location[1]}",
             f"--type={button if action_type == 'click' else drag_type}",
@@ -301,9 +305,13 @@ class EasyClicker:
             drag_type = "s"
         elif clicker_type == "drag_end":
             drag_type = "e"
+        
+        # Lấy đường dẫn tuyệt đối của clicker.py
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        clicker_path = os.path.join(current_dir, "clicker.py")
             
         cmd = [
-            "python", "clicker.py",
+            "python", clicker_path,
             f"--port={self.server_port}",
             f"--location={position[0]},{position[1]}",
             f"--type={action.button if clicker_type == 'click' else drag_type}",
