@@ -115,8 +115,7 @@ class EasyClicker:
                     idx = int(idx)
                     if cmd == "POS" and idx < len(self.actions):
                         self.actions[idx]["position"] = pos
-                        # Chỉ cập nhật label của action này
-                        self.window.after(0, lambda: self.update_single_action_label(idx))
+                        self.update_action_display()
         except:
             pass
         finally:
@@ -145,24 +144,10 @@ class EasyClicker:
             
         for idx, action in enumerate(self.actions):
             self.create_action_widget(idx, action)
-    
-    def update_single_action_label(self, idx):
-        """Chỉ cập nhật label của một action cụ thể, không load lại toàn bộ UI"""
-        if idx < len(self.actions) and self.actions[idx]["widget_label"]:
-            action = self.actions[idx]
-            type_map = {"left": "Click trái", "right": "Click phải", "double": "Nháy đúp"}
-            pos = action["position"]
-            duration = action["duration"]
-            delay = action["delay"]
-            text = f"{idx+1}: {type_map[action['type']]} tại {pos} trong {duration}ms\nDelay {delay}ms"
-            action["widget_label"].configure(text=text)
             
     def create_action_widget(self, idx, action):
         frame = ctk.CTkFrame(self.scroll_frame)
         frame.pack(fill="x", padx=5, pady=3)
-        
-        # Lưu reference đến frame
-        action["widget_frame"] = frame
         
         type_map = {"left": "Click trái", "right": "Click phải", "double": "Nháy đúp"}
         pos = action["position"]
@@ -173,9 +158,6 @@ class EasyClicker:
         
         label = ctk.CTkLabel(frame, text=text, width=400, anchor="w")
         label.pack(side="left", padx=5)
-        
-        # Lưu reference đến label để cập nhật sau
-        action["widget_label"] = label
         
         btn_frame = ctk.CTkFrame(frame)
         btn_frame.pack(side="right", padx=5)
@@ -216,7 +198,7 @@ class EasyClicker:
             try:
                 action['duration'] = int(duration_entry.get())
                 action['delay'] = int(delay_entry.get())
-                self.update_single_action_label(idx)
+                self.update_action_display()
                 edit_win.destroy()
             except ValueError:
                 messagebox.showerror("Lỗi", "Vui lòng nhập số hợp lệ")
@@ -227,18 +209,7 @@ class EasyClicker:
         new_idx = idx + direction
         if 0 <= new_idx < len(self.actions):
             self.actions[idx], self.actions[new_idx] = self.actions[new_idx], self.actions[idx]
-    def restart_all_clickers(self):
-        """Tắt và khởi động lại tất cả clicker, giữ nguyên vị trí cũ"""
-        # Tắt tất cả clicker
-        for action in self.actions:
-            if action.get("process"):
-                action["process"].terminate()
-                
-        # Khởi động lại với vị trí cũ
-        for idx, action in enumerate(self.actions):
-            self.launch_clicker(idx, action["position"])
-                                                
-        self.update_action_display()
+            self.restart_all_clickers()
             
     def delete_action(self, idx):
         if idx < len(self.actions):
@@ -247,32 +218,28 @@ class EasyClicker:
             del self.actions[idx]
             self.restart_all_clickers()
             
-    def launch_clicker(self, idx, position=None):
-        """Khởi chạy clicker.py cho action tại index idx"""
-        action = self.actions[idx]
-        
-        # Lấy script path để gọi clicker.py đúng
+    def restart_all_clickers(self):
+        # Tắt tất cả clicker
+        for action in self.actions:
+            if action.get("process"):
+                action["process"].terminate()
+                
+        # Khởi động lại
         script_dir = os.path.dirname(os.path.abspath(__file__))
         clicker_path = os.path.join(script_dir, "clicker.py")
-        
-        # Sử dụng pythonw.exe để không hiện cmd
         python_exe = sys.executable.replace("python.exe", "pythonw.exe")
         if not os.path.exists(python_exe):
             python_exe = sys.executable
-        
-        # Nếu có position truyền vào thì dùng, không thì dùng position hiện tại
-        pos = position if position else action["position"]
             
-        cmd = [python_exe, clicker_path, 
-               f"--port={self.server_port}", 
-               f"--location={idx}", 
-               f"--type={action['type']}",
-               f"--position={pos}"]
-        
-        process = subprocess.Popen(cmd, 
-                                  creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
-        
-        action["process"] = process
+        for idx, action in enumerate(self.actions):
+            cmd = [python_exe, clicker_path, 
+                   f"--port={self.server_port}", 
+                   f"--location={idx}", 
+                   f"--type={action['type']}"]
+            action["process"] = subprocess.Popen(cmd, 
+                                                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+                                                
+        self.update_action_display()
         
     def start_clicking(self):
         if not self.actions:
@@ -338,7 +305,7 @@ class EasyClicker:
             elif action["type"] == "right":
                 pyautogui.rightClick(x, y, duration=duration)
             elif action["type"] == "double":
-                pyautogui.click(x, y, clicks=2, interval=duration)
+                pyautogui.doubleClick(x, y, interval=duration)
                 
             time.sleep(action["delay"] / 1000.0)
             
