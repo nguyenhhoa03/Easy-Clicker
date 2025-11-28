@@ -10,8 +10,8 @@ import os
 
 class ClickAction:
     def __init__(self, action_type, position, button="left", duration=300, delay=300, number=1):
-        self.action_type = action_type  # "click" or "drag"
-        self.position = position  # (x, y) hoặc [(x1, y1), (x2, y2)] cho drag
+        self.action_type = action_type  # "click"
+        self.position = position  # (x, y)
         self.button = button
         self.duration = duration
         self.delay = delay
@@ -42,7 +42,6 @@ class EasyClicker:
         top_frame.pack(fill="x", padx=10, pady=10)
         
         ctk.CTkButton(top_frame, text="Thêm Click", command=self.add_click).pack(side="left", padx=5)
-        ctk.CTkButton(top_frame, text="Thêm Kéo Thả", command=self.add_drag).pack(side="left", padx=5)
         ctk.CTkButton(top_frame, text="Load Config", command=self.load_config).pack(side="left", padx=5)
         ctk.CTkButton(top_frame, text="Lưu Config", command=self.save_config).pack(side="left", padx=5)
         
@@ -108,13 +107,7 @@ class EasyClicker:
                 
                 for action in self.actions:
                     if action.number == number:
-                        if action.action_type == "click":
-                            action.position = tuple(position)
-                        elif action.action_type == "drag":
-                            if message.get("drag_type") == "s":
-                                action.position[0] = tuple(position)
-                            elif message.get("drag_type") == "e":
-                                action.position[1] = tuple(position)
+                        action.position = tuple(position)
                         break
                 
                 self.app.after(0, self.refresh_actions_list)
@@ -134,43 +127,23 @@ class EasyClicker:
         
         def choose_left():
             button_dialog.destroy()
-            self.create_clicker("click", "left")
+            self.create_clicker("left")
             
         def choose_right():
             button_dialog.destroy()
-            self.create_clicker("click", "right")
+            self.create_clicker("right")
             
         ctk.CTkButton(button_dialog, text="Chuột Trái", command=choose_left).pack(pady=5)
         ctk.CTkButton(button_dialog, text="Chuột Phải", command=choose_right).pack(pady=5)
         
-    def add_drag(self):
+    def create_clicker(self, button):
         number = len(self.actions) + 1
-        action = ClickAction("drag", [None, None], duration=1000, delay=350, number=number)
+        action = ClickAction("click", (100, 100), button, number=number)
         self.actions.append(action)
-        
-        # Tạo clicker điểm bắt đầu
-        self.create_clicker("drag_start", "left", number)
-        time.sleep(0.1)
-        # Tạo clicker điểm kết thúc
-        self.create_clicker("drag_end", "left", number)
-        
-        self.refresh_actions_list()
-        
-    def create_clicker(self, action_type, button, number=None):
-        if number is None:
-            number = len(self.actions) + 1
-            action = ClickAction("click", (100, 100), button, number=number)
-            self.actions.append(action)
         
         screen_width = self.app.winfo_screenwidth()
         screen_height = self.app.winfo_screenheight()
         location = (screen_width // 2, screen_height // 2)
-        
-        drag_type = ""
-        if action_type == "drag_start":
-            drag_type = "s"
-        elif action_type == "drag_end":
-            drag_type = "e"
         
         # Lấy đường dẫn tuyệt đối của clicker.py
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -180,13 +153,12 @@ class EasyClicker:
             "python", clicker_path,
             f"--port={self.server_port}",
             f"--location={location[0]},{location[1]}",
-            f"--type={button if action_type == 'click' else drag_type}",
+            f"--type={button}",
             f"--number={number}"
         ]
         
         process = subprocess.Popen(cmd)
-        key = f"{number}_{drag_type}" if drag_type else str(number)
-        self.clicker_processes[key] = process
+        self.clicker_processes[str(number)] = process
         
         self.refresh_actions_list()
         
@@ -201,14 +173,9 @@ class EasyClicker:
         frame = ctk.CTkFrame(self.actions_canvas_frame)
         frame.pack(fill="x", padx=5, pady=5)
         
-        if action.action_type == "click":
-            pos_str = f"{action.position[0]}x{action.position[1]}" if action.position else "Chưa đặt"
-            button_str = "trái" if action.button == "left" else "phải"
-            text = f"{action.number}: Click chuột {button_str} tại vị trí {pos_str} trong {action.duration}ms"
-        else:
-            pos1_str = f"{action.position[0][0]}x{action.position[0][1]}" if action.position[0] else "Chưa đặt"
-            pos2_str = f"{action.position[1][0]}x{action.position[1][1]}" if action.position[1] else "Chưa đặt"
-            text = f"{action.number}: Kéo thả chuột từ {pos1_str} đến {pos2_str} trong {action.duration}ms"
+        pos_str = f"{action.position[0]}x{action.position[1]}" if action.position else "Chưa đặt"
+        button_str = "trái" if action.button == "left" else "phải"
+        text = f"{action.number}: Click chuột {button_str} tại vị trí {pos_str} trong {action.duration}ms"
             
         label = ctk.CTkLabel(frame, text=text, anchor="w")
         label.pack(side="left", fill="x", expand=True, padx=5)
@@ -238,11 +205,7 @@ class EasyClicker:
         delay_entry.insert(0, str(action.delay))
         delay_entry.pack(pady=5)
         
-        if action.action_type == "click":
-            ctk.CTkLabel(edit_window, text=f"Tọa độ: {action.position} (chỉ xem)").pack(pady=5)
-        else:
-            ctk.CTkLabel(edit_window, text=f"Điểm bắt đầu: {action.position[0]} (chỉ xem)").pack(pady=5)
-            ctk.CTkLabel(edit_window, text=f"Điểm kết thúc: {action.position[1]} (chỉ xem)").pack(pady=5)
+        ctk.CTkLabel(edit_window, text=f"Tọa độ: {action.position} (chỉ xem)").pack(pady=5)
             
         def save_changes():
             try:
@@ -284,27 +247,10 @@ class EasyClicker:
         
         # Tạo lại các clicker với số mới
         for action in self.actions:
-            if action.action_type == "click":
-                self.recreate_clicker(action, "click")
-            else:
-                self.recreate_clicker(action, "drag_start")
-                self.recreate_clicker(action, "drag_end")
+            self.recreate_clicker(action)
                 
-    def recreate_clicker(self, action, clicker_type):
-        position = action.position
-        if clicker_type == "drag_start":
-            position = action.position[0] if action.position[0] else (100, 100)
-        elif clicker_type == "drag_end":
-            position = action.position[1] if action.position[1] else (150, 150)
-            
-        if not position:
-            position = (100, 100)
-            
-        drag_type = ""
-        if clicker_type == "drag_start":
-            drag_type = "s"
-        elif clicker_type == "drag_end":
-            drag_type = "e"
+    def recreate_clicker(self, action):
+        position = action.position if action.position else (100, 100)
         
         # Lấy đường dẫn tuyệt đối của clicker.py
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -314,32 +260,21 @@ class EasyClicker:
             "python", clicker_path,
             f"--port={self.server_port}",
             f"--location={position[0]},{position[1]}",
-            f"--type={action.button if clicker_type == 'click' else drag_type}",
+            f"--type={action.button}",
             f"--number={action.number}"
         ]
         
         process = subprocess.Popen(cmd)
-        key = f"{action.number}_{drag_type}" if drag_type else str(action.number)
-        self.clicker_processes[key] = process
+        self.clicker_processes[str(action.number)] = process
         
     def delete_action(self, index):
         action = self.actions[index]
         
         # Đóng các clicker liên quan
-        if action.action_type == "click":
-            key = str(action.number)
-            if key in self.clicker_processes:
-                self.clicker_processes[key].terminate()
-                del self.clicker_processes[key]
-        else:
-            key_s = f"{action.number}_s"
-            key_e = f"{action.number}_e"
-            if key_s in self.clicker_processes:
-                self.clicker_processes[key_s].terminate()
-                del self.clicker_processes[key_s]
-            if key_e in self.clicker_processes:
-                self.clicker_processes[key_e].terminate()
-                del self.clicker_processes[key_e]
+        key = str(action.number)
+        if key in self.clicker_processes:
+            self.clicker_processes[key].terminate()
+            del self.clicker_processes[key]
                 
         del self.actions[index]
         self.renumber_actions()
@@ -360,11 +295,8 @@ class EasyClicker:
             
         # Kiểm tra tọa độ đã đặt chưa
         for action in self.actions:
-            if action.action_type == "click" and not action.position:
+            if not action.position:
                 messagebox.showwarning("Cảnh báo", f"Hành động {action.number} chưa đặt tọa độ!")
-                return
-            elif action.action_type == "drag" and (not action.position[0] or not action.position[1]):
-                messagebox.showwarning("Cảnh báo", f"Hành động {action.number} chưa đặt đủ tọa độ!")
                 return
                 
         self.is_running = True
@@ -416,17 +348,9 @@ class EasyClicker:
             if self.stop_flag:
                 break
                 
-            if action.action_type == "click":
-                pyautogui.click(action.position[0], action.position[1], 
-                               button=action.button, 
-                               duration=action.duration/1000.0)
-            else:
-                # Kéo thả chuột: di chuyển đến điểm bắt đầu, nhấn giữ, kéo đến điểm kết thúc, thả
-                pyautogui.moveTo(action.position[0][0], action.position[0][1])
-                pyautogui.mouseDown(button='left')
-                pyautogui.moveTo(action.position[1][0], action.position[1][1], 
-                                duration=action.duration/1000.0)
-                pyautogui.mouseUp(button='left')
+            pyautogui.click(action.position[0], action.position[1], 
+                           button=action.button, 
+                           duration=action.duration/1000.0)
                                 
             time.sleep(action.delay/1000.0)
             
@@ -439,11 +363,7 @@ class EasyClicker:
         
         # Hiển thị lại các clicker
         for action in self.actions:
-            if action.action_type == "click":
-                self.recreate_clicker(action, "click")
-            else:
-                self.recreate_clicker(action, "drag_start")
-                self.recreate_clicker(action, "drag_end")
+            self.recreate_clicker(action)
                 
     def save_config(self):
         filename = filedialog.asksaveasfilename(defaultextension=".json", 
@@ -496,12 +416,7 @@ class EasyClicker:
                     action_data["number"]
                 )
                 self.actions.append(action)
-                
-                if action.action_type == "click":
-                    self.recreate_clicker(action, "click")
-                else:
-                    self.recreate_clicker(action, "drag_start")
-                    self.recreate_clicker(action, "drag_end")
+                self.recreate_clicker(action)
                     
             self.refresh_actions_list()
             messagebox.showinfo("Thành công", "Đã load cấu hình!")
