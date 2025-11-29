@@ -72,7 +72,7 @@ class EasyClicker:
         ctk.CTkRadioButton(repeat_frame, text="N phút", variable=self.repeat_mode, 
                           value="minutes").pack(side="left", padx=5)
         
-        self.repeat_value = ctk.CTkEntry(repeat_frame, width=80, placeholder_text="Số lần/phút")
+        self.repeat_value = ctk.CTkEntry(repeat_frame, width=80, placeholder_text="Số N")
         self.repeat_value.pack(side="left", padx=5)
         
         # Frame điều khiển chạy
