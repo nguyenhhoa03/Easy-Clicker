@@ -56,7 +56,7 @@ class EasyClicker:
         ctk.CTkRadioButton(loop_frame, text="N lần", variable=self.loop_type, value="times").pack(side="left", padx=5)
         ctk.CTkRadioButton(loop_frame, text="N phút", variable=self.loop_type, value="minutes").pack(side="left", padx=5)
         
-        self.loop_value = ctk.CTkEntry(loop_frame, width=80, placeholder_text="Số lần/phút")
+        self.loop_value = ctk.CTkEntry(loop_frame, width=80, placeholder_text="Tham số")
         self.loop_value.pack(side="left", padx=5)
         
         # Actions list with scrollbar
