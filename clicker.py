@@ -119,7 +119,7 @@ class ClickerWindow:
                 if time.time() - self.position_stable_time >= 0.3:
                     # Gửi vị trí về server
                     self.send_position(current_position)
-                    self.position_stable_time = time.time() + 10  # Tránh gửi liên tục
+                    self.position_stable_time = time.time() + 3600  # Tránh gửi liên tục
                     
     def send_position(self, position):
         try:
