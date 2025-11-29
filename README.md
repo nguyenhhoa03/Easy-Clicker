@@ -38,7 +38,7 @@ pip install -r requirements.txt
 
 ```
 Easy-Clicker/
-├── easy-clicker.py              # File chính chứa giao diện và logic
+├── easy-clicker.pyw             # File chính chứa giao diện và logic
 ├── clicker.py           # Module xử lý click (subprocess)
 ├── requirements.txt     # Danh sách thư viện phụ thuộc
 ├── LICENSE             # GNU General Public License v3.0
@@ -50,7 +50,7 @@ Easy-Clicker/
 ### 1. Khởi chạy ứng dụng
 
 ```bash
-python easy-clicker.py
+python easy-clicker.pyw
 ```
 
 ### 2. Thêm hành động
