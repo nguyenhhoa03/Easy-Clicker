@@ -1,71 +1,91 @@
 import tkinter as tk
 import socket
-import sys
+import json
+import argparse
 import time
 import threading
 
 class ClickerWindow:
-    def __init__(self, port, location, click_type, position=None):
+    def __init__(self, port, location, click_type, number):
         self.port = port
         self.location = location
         self.click_type = click_type
+        self.number = number
         self.last_position = None
-        self.position_stable_time = 0
-        self.initial_position = position  # Vị trí ban đầu nếu có
+        self.position_stable_time = None
+        self.should_exit = False
         
         self.root = tk.Tk()
-        self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
-        
-        # Màu nền trong suốt
-        bg_color = "#FF00FF"
-        self.root.configure(bg=bg_color)
-        self.root.wm_attributes("-transparentcolor", bg_color)
+        self.root.overrideredirect(True)
         
         # Kích thước cửa sổ
-        size = 40
+        self.window_size = 50
         
-        # Đặt vị trí ban đầu
-        if position and position != "0x0":
-            x, y = map(int, position.split("x"))
-            # Trừ đi size/2 để căn giữa
-            self.root.geometry(f"{size}x{size}+{x-20}+{y-20}")
-        else:
-            self.root.geometry(f"{size}x{size}+100+100")
+        # Đặt vị trí cửa sổ
+        x = location[0] - self.window_size // 2
+        y = location[1] - self.window_size // 2
+        self.root.geometry(f"{self.window_size}x{self.window_size}+{x}+{y}")
         
-        # Tạo canvas để vẽ vòng tròn
-        self.canvas = tk.Canvas(self.root, width=size, height=size, 
-                               bg=bg_color, highlightthickness=0)
+        # Tạo canvas trong suốt
+        self.canvas = tk.Canvas(self.root, width=self.window_size, height=self.window_size, 
+                                bg='black', highlightthickness=0)
         self.canvas.pack()
         
-        # Màu sắc theo loại click
-        color_map = {
-            "left": "#4CAF50",
-            "right": "#2196F3",
-            "double": "#FF9800"
-        }
-        color = color_map.get(click_type, "#4CAF50")
+        # Làm cửa sổ trong suốt
+        self.root.wm_attributes("-transparentcolor", "black")
         
-        # Vẽ vòng tròn
-        self.canvas.create_oval(2, 2, size-2, size-2, fill=color, outline="white", width=2)
-        
-        # Hiển thị số thứ tự
-        self.text_id = self.canvas.create_text(size//2, size//2, 
-                                               text=str(int(location)+1), 
-                                               fill="white", 
-                                               font=("Arial", 14, "bold"))
+        # Vẽ vòng tròn và text
+        self.draw_circle()
         
         # Bind sự kiện kéo thả
-        self.canvas.bind("<Button-1>", self.start_drag)
+        self.canvas.bind("<Button-1>", self.on_press)
         self.canvas.bind("<B1-Motion>", self.on_drag)
-        self.canvas.bind("<ButtonRelease-1>", self.stop_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_release)
         
         self.drag_data = {"x": 0, "y": 0}
         
-        # Bắt đầu kiểm tra vị trí
-        self.check_position()
+        # Thread kiểm tra vị trí
+        self.check_thread = threading.Thread(target=self.check_position, daemon=True)
+        self.check_thread.start()
         
-    def start_drag(self, event):
+        # Thread lắng nghe lệnh từ server
+        self.listen_thread = threading.Thread(target=self.listen_commands, daemon=True)
+        self.listen_thread.start()
+        
+    def listen_commands(self):
+        """Lắng nghe lệnh từ server (như lệnh thoát)"""
+        listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listen_socket.bind(("127.0.0.1", 0))
+        listen_port = listen_socket.getsockname()[1]
+        listen_socket.listen(1)
+        
+        # Gửi port lắng nghe về server (nếu cần mở rộng sau)
+        # Hiện tại clicker sẽ tự thoát khi nhận được lệnh
+        
+        while not self.should_exit:
+            try:
+                listen_socket.settimeout(1.0)
+                # Đơn giản hóa: clicker sẽ tự đóng khi main app đóng connection
+            except:
+                pass
+        
+    def draw_circle(self):
+        # Xóa canvas
+        self.canvas.delete("all")
+        
+        # Vẽ vòng tròn ngoài (màu xanh)
+        self.canvas.create_oval(2, 2, self.window_size-2, self.window_size-2, 
+                                fill="#1f538d", outline="#3b8ed0", width=2)
+        
+        # Hiển thị số
+        display_text = str(self.number)
+            
+        self.canvas.create_text(self.window_size//2, self.window_size//2, 
+                                text=display_text, fill="white", 
+                                font=("Arial", 12, "bold"))
+        
+    def on_press(self, event):
         self.drag_data["x"] = event.x
         self.drag_data["y"] = event.y
         
@@ -74,56 +94,71 @@ class ClickerWindow:
         y = self.root.winfo_y() + event.y - self.drag_data["y"]
         self.root.geometry(f"+{x}+{y}")
         
-    def stop_drag(self, event):
+    def on_release(self, event):
         pass
         
     def check_position(self):
-        # Lấy vị trí trung tâm của cửa sổ
-        x = self.root.winfo_x() + 20  # 20 = size/2
-        y = self.root.winfo_y() + 20
-        current_pos = (x, y)
-        
-        # Kiểm tra nếu vị trí không đổi trong 300ms
-        if self.last_position == current_pos:
-            if time.time() - self.position_stable_time >= 0.3:
-                # Gửi vị trí về server
-                self.send_position(x, y)
-                self.position_stable_time = time.time() + 100  # Đặt thời gian lớn để không gửi lại
-        else:
-            self.last_position = current_pos
-            self.position_stable_time = time.time()
+        while not self.should_exit:
+            time.sleep(0.1)
             
-        # Tiếp tục kiểm tra
-        self.root.after(50, self.check_position)
-        
-    def send_position(self, x, y):
+            current_x = self.root.winfo_x() + self.window_size // 2
+            current_y = self.root.winfo_y() + self.window_size // 2
+            current_position = (current_x, current_y)
+            
+            if self.last_position is None:
+                self.last_position = current_position
+                self.position_stable_time = time.time()
+                continue
+                
+            # Kiểm tra vị trí có thay đổi không
+            if current_position != self.last_position:
+                self.last_position = current_position
+                self.position_stable_time = time.time()
+            else:
+                # Vị trí ổn định
+                if time.time() - self.position_stable_time >= 0.3:
+                    # Gửi vị trí về server
+                    self.send_position(current_position)
+                    self.position_stable_time = time.time() + 10  # Tránh gửi liên tục
+                    
+    def send_position(self, position):
         try:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(('127.0.0.1', self.port))
-            message = f"POS:{self.location}:{x}x{y}"
-            client.send(message.encode())
+            client.connect(("127.0.0.1", self.port))
+            
+            message = {
+                "type": "position_update",
+                "number": self.number,
+                "position": position
+            }
+            
+            client.send(json.dumps(message).encode())
             client.close()
         except Exception as e:
             print(f"Error sending position: {e}")
             
     def run(self):
+        # Kiểm tra định kỳ nếu cần thoát
+        def check_exit():
+            if self.should_exit:
+                self.root.destroy()
+            else:
+                self.root.after(100, check_exit)
+        
+        self.root.after(100, check_exit)
         self.root.mainloop()
 
-def parse_args():
-    args = {}
-    for arg in sys.argv[1:]:
-        if arg.startswith("--"):
-            key, value = arg[2:].split("=", 1)
-            args[key] = value
-    return args
-
 if __name__ == "__main__":
-    args = parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, required=True)
+    parser.add_argument("--location", type=str, required=True)
+    parser.add_argument("--type", type=str, required=True)
+    parser.add_argument("--number", type=int, required=True)
     
-    port = int(args.get("port", 0))
-    location = args.get("location", "0")
-    click_type = args.get("type", "left")
-    position = args.get("position", None)  # Lấy vị trí nếu có
+    args = parser.parse_args()
     
-    app = ClickerWindow(port, location, click_type, position)
+    # Parse location
+    location = tuple(map(int, args.location.split(",")))
+    
+    app = ClickerWindow(args.port, location, args.type, args.number)
     app.run()
