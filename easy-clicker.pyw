@@ -123,20 +123,21 @@ class EasyClicker:
         button_dialog.geometry("300x200")
         button_dialog.attributes("-topmost", True)
         
-        ctk.CTkLabel(button_dialog, text="Chọn nút chuột:").pack(pady=10)
+        ctk.CTkLabel(button_dialog, text="Chọn loại click:").pack(pady=10)
         
-        button_choice = ctk.StringVar(value="left")
-        ctk.CTkRadioButton(button_dialog, text="Chuột Trái", variable=button_choice, value="left").pack(pady=5)
-        ctk.CTkRadioButton(button_dialog, text="Chuột Phải", variable=button_choice, value="right").pack(pady=5)
-        
-        double_click_var = ctk.BooleanVar(value=False)
-        ctk.CTkCheckBox(button_dialog, text="Nháy đúp", variable=double_click_var).pack(pady=10)
+        click_choice = ctk.StringVar(value="left")
+        ctk.CTkRadioButton(button_dialog, text="Click Trái", variable=click_choice, value="left").pack(pady=5)
+        ctk.CTkRadioButton(button_dialog, text="Click Phải", variable=click_choice, value="right").pack(pady=5)
+        ctk.CTkRadioButton(button_dialog, text="Nháy Đúp Trái", variable=click_choice, value="double").pack(pady=5)
         
         def confirm():
-            button = button_choice.get()
-            double_click = double_click_var.get()
-            button_dialog.destroy()
-            self.create_clicker(button, double_click)
+            choice = click_choice.get()
+            if choice == "double":
+                button_dialog.destroy()
+                self.create_clicker("left", double_click=True)
+            else:
+                button_dialog.destroy()
+                self.create_clicker(choice, double_click=False)
             
         ctk.CTkButton(button_dialog, text="Xác nhận", command=confirm).pack(pady=10)
         
@@ -152,9 +153,17 @@ class EasyClicker:
         # Lấy đường dẫn tuyệt đối của clicker.py
         current_dir = os.path.dirname(os.path.abspath(__file__))
         clicker_path = os.path.join(current_dir, "clicker.py")
+        
+        # Tìm pythonw.exe
+        python_dir = os.path.dirname(os.sys.executable)
+        pythonw_path = os.path.join(python_dir, "pythonw.exe")
+        
+        # Nếu không tìm thấy pythonw, dùng python
+        if not os.path.exists(pythonw_path):
+            pythonw_path = "pythonw"
             
         cmd = [
-            "python", clicker_path,
+            pythonw_path, clicker_path,
             f"--port={self.server_port}",
             f"--location={location[0]},{location[1]}",
             f"--type={button}",
@@ -178,9 +187,12 @@ class EasyClicker:
         frame.pack(fill="x", padx=5, pady=5)
         
         pos_str = f"{action.position[0]}x{action.position[1]}" if action.position else "Chưa đặt"
-        button_str = "trái" if action.button == "left" else "phải"
-        click_type = "Nháy đúp" if action.double_click else "Click"
-        text = f"{action.number}: {click_type} chuột {button_str} tại vị trí {pos_str} trong {action.duration}ms"
+        
+        if action.double_click:
+            text = f"{action.number}: Nháy đúp chuột trái tại vị trí {pos_str}"
+        else:
+            button_str = "trái" if action.button == "left" else "phải"
+            text = f"{action.number}: Click chuột {button_str} tại vị trí {pos_str} trong {action.duration}ms"
             
         label = ctk.CTkLabel(frame, text=text, anchor="w")
         label.pack(side="left", fill="x", expand=True, padx=5)
@@ -197,29 +209,30 @@ class EasyClicker:
     def edit_action(self, action):
         edit_window = ctk.CTkToplevel(self.app)
         edit_window.title(f"Chỉnh sửa hành động {action.number}")
-        edit_window.geometry("400x300")
+        edit_window.geometry("400x250")
         edit_window.attributes("-topmost", True)
         
-        ctk.CTkLabel(edit_window, text="Thời gian thực hiện (ms):").pack(pady=5)
-        duration_entry = ctk.CTkEntry(edit_window)
-        duration_entry.insert(0, str(action.duration))
-        duration_entry.pack(pady=5)
+        # Chỉ hiển thị duration cho click thường
+        if not action.double_click:
+            ctk.CTkLabel(edit_window, text="Thời gian thực hiện (ms):").pack(pady=5)
+            duration_entry = ctk.CTkEntry(edit_window)
+            duration_entry.insert(0, str(action.duration))
+            duration_entry.pack(pady=5)
+        else:
+            duration_entry = None
         
         ctk.CTkLabel(edit_window, text="Delay sau hành động (ms):").pack(pady=5)
         delay_entry = ctk.CTkEntry(edit_window)
         delay_entry.insert(0, str(action.delay))
         delay_entry.pack(pady=5)
         
-        double_click_var = ctk.BooleanVar(value=action.double_click)
-        ctk.CTkCheckBox(edit_window, text="Nháy đúp", variable=double_click_var).pack(pady=10)
-        
         ctk.CTkLabel(edit_window, text=f"Tọa độ: {action.position} (chỉ xem)").pack(pady=5)
             
         def save_changes():
             try:
-                action.duration = int(duration_entry.get())
+                if duration_entry:
+                    action.duration = int(duration_entry.get())
                 action.delay = int(delay_entry.get())
-                action.double_click = double_click_var.get()
                 self.refresh_actions_list()
                 edit_window.destroy()
             except ValueError:
@@ -264,9 +277,17 @@ class EasyClicker:
         # Lấy đường dẫn tuyệt đối của clicker.py
         current_dir = os.path.dirname(os.path.abspath(__file__))
         clicker_path = os.path.join(current_dir, "clicker.py")
+        
+        # Tìm pythonw.exe
+        python_dir = os.path.dirname(os.sys.executable)
+        pythonw_path = os.path.join(python_dir, "pythonw.exe")
+        
+        # Nếu không tìm thấy pythonw, dùng python
+        if not os.path.exists(pythonw_path):
+            pythonw_path = "pythonw"
             
         cmd = [
-            "python", clicker_path,
+            pythonw_path, clicker_path,
             f"--port={self.server_port}",
             f"--location={position[0]},{position[1]}",
             f"--type={action.button}",
@@ -383,11 +404,12 @@ class EasyClicker:
             if self.stop_flag:
                 break
             
-            # Thực hiện click hoặc nháy đúp
+            # Thực hiện nháy đúp hoặc click thường
             if action.double_click:
-                pyautogui.doubleClick(action.position[0], action.position[1], 
-                                     button=action.button, 
-                                     interval=0.1)
+                # Nháy đúp luôn là 2 lần click trái, cách nhau 100ms
+                pyautogui.click(action.position[0], action.position[1], button='left')
+                time.sleep(0.1)
+                pyautogui.click(action.position[0], action.position[1], button='left')
             else:
                 pyautogui.click(action.position[0], action.position[1], 
                                button=action.button, 
