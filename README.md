@@ -114,7 +114,7 @@ python easy-clicker.pyw
 
 ### Kiến trúc
 
-- **main.py**: Giao diện chính sử dụng CustomTkinter, quản lý các subprocess clicker
+- **easy-clicker.pyw**: Giao diện chính sử dụng CustomTkinter, quản lý các subprocess clicker
 - **clicker.py**: Module độc lập chạy trong subprocess để xử lý việc hiển thị vị trí click
 - **Socket communication**: Server-client architecture để giao tiếp giữa main và clicker processes (localhost:dynamic_port)
 
@@ -158,15 +158,6 @@ Các tính năng có thể mở rộng:
 - Chế độ random delay/position để mô phỏng hành vi người dùng tự nhiên hơn
 - Export/import macro sang các format khác
 
-## Đóng góp
-
-Mọi đóng góp đều được chào đón! Vui lòng:
-
-1. Fork repository
-2. Tạo branch cho feature của bạn (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Mở Pull Request
 
 Báo lỗi và đề xuất tính năng mới xin gửi qua [Issues](https://github.com/nguyenhhoa03/Easy-Clicker/issues).
 
