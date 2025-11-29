@@ -1,5 +1,7 @@
 # Easy Clicker
 
+## ⚠️ Cảnh báo: Ứng dụng chưa được tối ưu và tốn rất nhiều tài nguyên thiết bị khi có nhiều thao tác.
+
 Ứng dụng tự động hóa thao tác chuột với giao diện đồ họa thân thiện, cho phép ghi lại và thực thi các chuỗi thao tác click chuột trên Windows.
 
 ## Tính năng
